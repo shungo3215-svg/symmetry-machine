@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>symmetry machine — gallery</title>
+<style>
+  /* デザイン言語: 白 × ネイビー2色・等幅・装飾なし（index.htmlと同じ） */
+  :root {
+    --navy: #0044cc;
+    --navy-50: rgba(0,68,204,.5);
+    --navy-25: rgba(0,68,204,.25);
+    --line: #dde7f5;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #fff;
+    color: var(--navy);
+    font-family: "JetBrains Mono","SF Mono","Menlo",ui-monospace,monospace;
+    font-size: 11px;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 28px 80px;
+  }
+  h1 { font-size: 11px; font-weight: 600; letter-spacing: .2em; margin: 0 0 4px; }
+  a { color: var(--navy); }
+  .note { color: var(--navy-50); font-size: 10px; margin-bottom: 28px; }
+  .hint { color: var(--navy-25); font-size: 9px; letter-spacing: .08em; }
+  #grid { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  figure { margin: 0; position: relative; }
+  figure img { display: block; width: 260px; max-width: 88vw; border: 1px solid var(--line); }
+  figcaption { font-size: 9px; color: var(--navy-50); letter-spacing: .1em; margin-top: 3px; }
+  .del {
+    position: absolute; top: 0; right: 0; padding: 3px 8px;
+    border: none; background: transparent; color: var(--navy-25);
+    font: inherit; cursor: pointer;
+  }
+  .del:hover { color: var(--navy); }
+  @media (max-width: 640px) {
+    body { padding: 20px 14px 60px; font-size: 12px; }
+    #grid { gap: 12px; }
+    figure img { width: min(88vw, 420px); }
+  }
+</style>
+</head>
+<body>
+
+<h1>SYMMETRY MACHINE — GALLERY</h1>
+<div class="note">気に入った展開の記録。<a href="./">→ 道具はこちら（symmetry machine）</a></div>
+<div id="status" class="hint">読み込み中…</div>
+<div id="grid"></div>
+
+<script>
+/* galleryブランチの items/*.json を表示する。
+   一覧はGitHub API（1リクエスト）、中身はrawの直配信（CDN・回数制限なし）。
+   制作者の端末（トークンをlocalStorageに持つ）にだけ削除×が出る */
+(async () => {
+  "use strict";
+  const REPO = "shungo3215-svg/symmetry-machine";
+  const grid = document.getElementById("grid");
+  const status = document.getElementById("status");
+  const token = localStorage.getItem("symmetry-machine.ghtoken") || "";
+
+  let list;
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/items?ref=gallery`);
+    if (!res.ok) throw new Error(res.status);
+    list = (await res.json()).filter(f => f.name.endsWith(".json"));
+  } catch (_) {
+    status.textContent = "まだ何もありません（またはAPI上限。少し待って再読み込み）";
+    return;
+  }
+  if (!list.length) { status.textContent = "まだ何もありません"; return; }
+  status.textContent = "";
+
+  await Promise.all(list.map(async f => {
+    try {
+      const e = await (await fetch(`https://raw.githubusercontent.com/${REPO}/gallery/items/${f.name}`)).json();
+      const fig = document.createElement("figure");
+      fig.dataset.name = f.name;
+      const img = new Image();
+      img.src = e.png;
+      img.alt = e.group;
+      const cap = document.createElement("figcaption");
+      cap.textContent = `${e.group} · ${e.date}`;
+      fig.append(img, cap);
+      if (token) {
+        const del = document.createElement("button");
+        del.className = "del";
+        del.textContent = "×";
+        del.title = "この記録を削除";
+        del.onclick = async () => {
+          if (!confirm(`${e.group}（${e.date}）を削除しますか？`)) return;
+          const r = await fetch(`https://api.github.com/repos/${REPO}/contents/items/${f.name}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
+            body: JSON.stringify({ message: `gallery: remove ${f.name}`, sha: f.sha, branch: "gallery" }),
+          });
+          if (r.ok) fig.remove(); else alert("削除できませんでした");
+        };
+        fig.appendChild(del);
+      }
+      grid.appendChild(fig);
+    } catch (_) { /* 個別の読み込み失敗はスキップ */ }
+  }));
+
+  // 到着順ではなく新しい順（ファイル名=タイムスタンプ）に並べ直す
+  [...grid.children]
+    .sort((a, b) => b.dataset.name.localeCompare(a.dataset.name))
+    .forEach(el => grid.appendChild(el));
+  if (!grid.children.length) status.textContent = "まだ何もありません";
+})();
+</script>
+
+</body>
+</html>

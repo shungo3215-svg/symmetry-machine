@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- スマホでホーム画面に追加したとき、アプリのように全画面で開く -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="symmetry">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="assets/symbol.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<title>symmetry machine</title>
+<style>
+/* =========================================================
+   0. デザイントークン（Serendie Design System の考え方に準拠・202_日々-タスク管理 と共有）
+      UIクロームは 白/グレー + アクセント1色。**作品の色（ink/paper）とは別レイヤー**で、
+      作品色はキャンバスの中だけに存在する（UIと生成物が視覚的に混ざらないようにする）。
+      コンポーネント側に生の値（HEX・px）を書かない。
+========================================================= */
+:root{
+  /* --- color: surface --- */
+  --color-background:        #ffffff;
+  --color-surface-primary:   #ffffff;
+  --color-surface-secondary: #f5f5f3;
+  --color-surface-tertiary:  #ececea;
+
+  /* --- color: text --- */
+  --color-text-primary:   #232322;
+  --color-text-secondary: #575757;
+  --color-text-muted:     #8c8b87;
+  --color-text-disabled:  #b1b0ae;
+
+  /* --- color: border --- */
+  --color-border-primary:   #d1d0cd;
+  --color-border-secondary: #e4e4e3;
+  --color-border-strong:    #8c8b87;
+
+  /* --- color: action / accent（アクセントは「選択されている」の意味だけに使う） --- */
+  --color-action-primary:       #232322;
+  --color-action-primary-hover: #424242;
+  --color-action-primary-text:  #ffffff;
+  --color-accent:        #275d72;
+  --color-accent-subtle: #e8f1f4;
+  --color-negative:      #a64343;
+  --color-focus-ring:    #275d72;
+  --color-overlay:       rgb(35 35 34 / .32);
+
+  /* --- typography --- */
+  --font-sans: Inter, "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Noto Sans Mono", "SFMono-Regular", Consolas, monospace;
+  --font-size-xs:   11px;
+  --font-size-sm:   12px;
+  --font-size-md:   14px;
+  --font-size-base: 16px;
+  --font-size-lg:   18px;
+  --font-weight-regular: 400;
+  --font-weight-medium:  500;
+  --font-weight-semibold:600;
+  --line-height-ui:   1.3;
+  --line-height-body: 1.6;
+
+  /* --- space（4px 基準） --- */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px;
+
+  /* --- radius --- */
+  --radius-xs:2px; --radius-sm:4px; --radius-md:6px; --radius-lg:8px;
+
+  /* --- border / focus --- */
+  --border-width-default:1px;
+  --focus-ring-offset:2px;
+
+  /* --- elevation（浮遊要素のみ） --- */
+  --shadow-floating: 0 4px 12px rgb(0 0 0 / .08), 0 1px 3px rgb(0 0 0 / .06);
+
+  /* --- motion --- */
+  --duration-fast:100ms; --duration-default:160ms;
+  --easing: cubic-bezier(.2,0,.2,1);
+
+  /* --- size --- */
+  --control-height-sm:28px;
+  --control-height-tool:32px;   /* 操作ボタンの基本（ツールUIなので md=36 より密に） */
+  --control-height-md:36px;
+  --control-height-lg:44px;
+  --sidebar-width:360px;
+  --pad-size:280px;             /* 描画パッドの論理サイズ（app.js の PAD_W と一致させる） */
+  --label-col:56px;             /* パネルのラベル列 */
+
+  /* --- 作品の色（UIではない。ユーザが選ぶ出力の色） --- */
+  --art-ink:   #0044cc;
+  --art-paper: #ffffff;
+}
+
+/* =========================================================
+   1. base
+========================================================= */
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+/* スマホ実機タッチ: バウンス/引っ張り更新を抑制・タップのグレー点滅を消す・タップでの文字選択を防ぐ */
+html,body{ overscroll-behavior:none; }
+body{
+  background:var(--color-background);
+  color:var(--color-text-primary);
+  font-family:var(--font-sans);
+  font-size:var(--font-size-md);
+  line-height:var(--line-height-ui);
+  -webkit-font-smoothing:antialiased;
+  -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent;
+}
+/* ダブルタップズーム/300ms遅延の抑制（パッドは touch-action:none） */
+button, label.btn, input[type=range]{ touch-action:manipulation; }
+:focus-visible{ outline:2px solid var(--color-focus-ring); outline-offset:var(--focus-ring-offset); }
+@media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+
+/* =========================================================
+   2. app bar（ブランド + モード + ヘルプ）
+========================================================= */
+.appbar{
+  display:flex; align-items:center; gap:var(--space-4);
+  height:var(--control-height-lg); padding:0 var(--space-5);
+  border-bottom:var(--border-width-default) solid var(--color-border-secondary);
+  background:var(--color-surface-primary);
+  position:sticky; top:0; z-index:20;
+}
+/* ロゴタイプ（インラインSVG・currentColorで着色。高さだけ決めて幅はviewBox比） */
+.brand{ display:inline-flex; align-items:center; color:var(--color-text-primary); flex:none; }
+.brand svg{ height:13px; width:auto; fill:currentColor; display:block; }
+.appbar .spacer{ flex:1; }
+
+/* セグメンテッドコントロール（モード切替） */
+.seg{
+  display:inline-flex; padding:2px; gap:2px;
+  background:var(--color-surface-secondary); border-radius:var(--radius-md);
+}
+.seg button{
+  height:var(--control-height-sm); padding:0 var(--space-3);
+  border:none; border-radius:var(--radius-sm); background:transparent;
+  color:var(--color-text-secondary);
+  font:var(--font-weight-medium) var(--font-size-sm)/var(--line-height-ui) var(--font-sans);
+  cursor:pointer;
+  transition:background var(--duration-fast) var(--easing), color var(--duration-fast) var(--easing);
+}
+.seg button:hover{ color:var(--color-text-primary); }
+.seg button.on{
+  background:var(--color-surface-primary); color:var(--color-text-primary);
+  box-shadow:0 1px 2px rgb(0 0 0 / .06);
+}
+
+/* アプリバーの操作（戻す・やり直す・全消去）。狭い画面ほど重要になるので常設する */
+.barAct{ height:var(--control-height-sm); padding:0 var(--space-3); flex:none; }
+.barAct:disabled{ color:var(--color-text-disabled); }
+
+/* =========================================================
+   3. layout（左：作業パネル / 右：展開。左揃え・中央寄せしない）
+========================================================= */
+#layout{
+  display:flex; gap:var(--space-8); align-items:flex-start;
+  padding:var(--space-6) var(--space-5) var(--space-10);
+}
+#padCol{
+  width:var(--sidebar-width); flex:none;
+  position:sticky; top:calc(var(--control-height-lg) + var(--space-6));
+  max-height:calc(100vh - var(--control-height-lg) - var(--space-8));
+  max-height:calc(100dvh - var(--control-height-lg) - var(--space-8));
+  overflow-y:auto; overscroll-behavior:contain;
+  padding-right:var(--space-2);
+}
+/* 造形の固定: #padCol は列内スクロールなので、その中で pad を上に貼り付ける。
+   パネルをどれだけ送っても、描いている手元（と状態表示）は常に見えている */
+.padStick{
+  position:sticky; top:0; z-index:2;
+  background:var(--color-background);
+  padding:var(--space-1) 0 var(--space-2);   /* 上下に地を持たせて、送った中身が縁から透けないように */
+}
+#pad{
+  width:var(--pad-size); height:var(--pad-size);
+  border:var(--border-width-default) solid var(--color-border-primary);
+  border-radius:var(--radius-sm);
+  touch-action:none; cursor:crosshair; display:block;
+  background:var(--art-paper);
+}
+/* 造形ロック中: 触れないことを枠と地の色で示す（アイコンや帯を足さずに状態を伝える） */
+body.pad-locked #pad{ border-style:dashed; border-color:var(--color-border-strong); cursor:not-allowed; }
+body.pad-locked #padCol .grp:first-child{ background:var(--color-surface-secondary); border-radius:var(--radius-sm); }
+#stateHint{
+  min-height:calc(var(--font-size-sm) * var(--line-height-ui));
+  margin-top:var(--space-2);
+  font-size:var(--font-size-sm); color:var(--color-text-secondary);
+  transition:color var(--duration-fast) var(--easing);
+}
+/* 消えたヒントはクリックで読み返せる（新しい要素は足さず、この行自体をクリック対象にする） */
+#stateHint.replay{ cursor:pointer; }
+#stateHint.replay:hover{ color:var(--color-text-primary); }
+
+/* =========================================================
+   4. panel（グループ = 見出し + 行。行 = ラベル列 + 内容列）
+      「全部を線で囲まない」。グループの区切りは余白と髪線1本だけ。
+
+      セクションは **畳めるグループ（details）** で、見出し(summary)＝入口。
+      閉じていても入口は必ず残るので、1280×800 でも全セクションが視野に入る。
+      （7つを開いたまま縦に積んでいた頃は、起動時にパネルの54%が画面外にあり、
+       いちばん下の「記録」「書き出し」には存在に気付けなかった。2026-08-08 改訂）
+========================================================= */
+#panel{ margin-top:var(--space-2); }
+.grp{ padding:var(--space-2) 0; border-top:var(--border-width-default) solid var(--color-border-secondary); }
+.grp:first-child{ border-top:none; padding-top:0; }
+.grp:last-child{ padding-bottom:0; }
+details.grp:not([open]){ padding:var(--space-1) 0; }
+.grpHd{
+  margin:0 0 var(--space-3);
+  font-size:var(--font-size-sm); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-muted);
+}
+/* 見出しが入口を兼ねる。三角の作りは details.sub と同じ（同じ操作は同じ形にする） */
+summary.grpHd{
+  display:flex; align-items:center; gap:var(--space-2);
+  height:var(--control-height-sm); margin:0; padding:0 var(--space-1);
+  list-style:none; cursor:pointer; border-radius:var(--radius-sm);
+}
+summary.grpHd::-webkit-details-marker{ display:none; }
+summary.grpHd:hover{ background:var(--color-surface-secondary); color:var(--color-text-primary); }
+summary.grpHd::before{
+  content:""; width:0; height:0; flex:none;
+  border-left:4px solid currentColor; border-top:3px solid transparent; border-bottom:3px solid transparent;
+  transition:transform var(--duration-fast) var(--easing);
+}
+details.grp[open] > summary.grpHd{ margin-bottom:var(--space-1); }
+details.grp[open] > summary.grpHd::before{ transform:rotate(90deg); }
+
+.prow{ display:grid; grid-template-columns:var(--label-col) minmax(0,1fr); column-gap:var(--space-3); align-items:start; }
+.prow + .prow{ margin-top:var(--space-1); }
+/* ラベル列を持たない全幅行（道具箱・スタイルのコントロールバーのように「一塊で読む」もの）。
+   同じ中身でも 292px→352px になるので、ツールは3行から2行に収まる */
+.prow.full{ grid-template-columns:minmax(0,1fr); }
+/* 道具箱だけは左右の余白を1段詰める（10個が2行に収まる／3行だと下のセクションを押し出す）。
+   タップ領域が要る900px未満では元の余白に戻す（下のレスポンシブ節） */
+#grpDraw > .prow.full > .pbody > button{ padding:0 var(--space-1); }
+/* 書き出しの3行だけを束ねる入れ物（ライブモードで隠す単位。display:block で出し入れするので
+   grid の .prow そのものには付けない） */
+.exportRow{ margin-top:var(--space-1); }
+.plbl{
+  font-size:var(--font-size-sm); color:var(--color-text-muted);
+  padding-top:calc((var(--control-height-tool) - var(--font-size-md)) / 2 - 1px);
+}
+/* 行の高さを操作ボタンに揃える（スライダーだけの行でもラベルと縦位置が合う） */
+.pbody{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); min-width:0; min-height:var(--control-height-tool); }
+.lbl{ font-size:var(--font-size-sm); color:var(--color-text-muted); padding:0 var(--space-1); }
+
+/* =========================================================
+   5. button（Ghost 基本 / Secondary 枠あり / Danger / Toggle）
+      操作ボタンが多いUIなので既定は Ghost。囲まず、hover の背景で触れることを示す。
+========================================================= */
+button, label.btn, a.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--space-1);
+  height:var(--control-height-tool); padding:0 var(--space-2);
+  border:var(--border-width-default) solid transparent; border-radius:var(--radius-sm);
+  background:transparent; color:var(--color-text-primary);
+  font:var(--font-weight-regular) var(--font-size-md)/var(--line-height-ui) var(--font-sans);
+  text-decoration:none; cursor:pointer; white-space:nowrap;
+  transition:background var(--duration-fast) var(--easing), color var(--duration-fast) var(--easing);
+}
+button:hover, label.btn:hover, a.btn:hover{ background:var(--color-surface-secondary); }
+button:active, label.btn:active{ background:var(--color-surface-tertiary); }
+button:disabled{ color:var(--color-text-disabled); cursor:default; background:transparent; }
+
+/* Secondary: 枠つき（書き出しなど「区切りのある操作」） */
+.btn-2nd{ border-color:var(--color-border-primary); padding:0 var(--space-3); }
+.btn-2nd:hover{ border-color:var(--color-border-strong); background:var(--color-surface-secondary); }
+
+/* Danger: 削除系 */
+.btn-danger{ color:var(--color-negative); }
+.btn-danger:hover{ background:#fbf0f0; }
+
+/* Toggle: 選択されている状態だけがアクセント色を持つ */
+.tg{ color:var(--color-text-secondary); }
+.tg:hover{ color:var(--color-text-primary); }
+.tg.on{
+  background:var(--color-accent-subtle); color:var(--color-accent);
+  font-weight:var(--font-weight-medium);
+}
+/* 「今は効かない」= 押せるが理由をヒントで出す（disabled にはしない＝理由が伝わらないため） */
+button.dis{ color:var(--color-text-disabled); }
+button.dis:hover{ color:var(--color-text-secondary); background:var(--color-surface-secondary); }
+
+/* ショートカット併記 */
+.key{
+  font-family:var(--font-mono); font-size:var(--font-size-xs);
+  color:var(--color-text-muted); font-weight:var(--font-weight-regular);
+}
+button.on .key{ color:var(--color-accent); }
+
+/* =========================================================
+   6. disclosure（役割ごとに畳む。開閉状態は prefs に保存）
+========================================================= */
+details.sub{ width:100%; }
+details.sub > summary{
+  display:flex; align-items:center; gap:var(--space-2);
+  height:var(--control-height-tool); padding:0 var(--space-2);
+  list-style:none; cursor:pointer; border-radius:var(--radius-sm);
+  font-size:var(--font-size-sm); color:var(--color-text-secondary);
+}
+details.sub > summary::-webkit-details-marker{ display:none; }
+details.sub > summary:hover{ background:var(--color-surface-secondary); color:var(--color-text-primary); }
+details.sub > summary::before{
+  content:""; width:0; height:0; flex:none;
+  border-left:4px solid currentColor; border-top:3px solid transparent; border-bottom:3px solid transparent;
+  transition:transform var(--duration-fast) var(--easing);
+}
+details.sub[open] > summary::before{ transform:rotate(90deg); }
+details.sub > .subBody{
+  display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1);
+  padding:var(--space-1) 0 var(--space-2) var(--space-4);
+}
+/* 畳んだ中身が「ラベル列つきの行」のとき（角数・整え・濃度・角丸…）。
+   ボタンの並びと違って値の種類が違うので、パネル本体と同じ文法のまま畳む */
+details.sub > .subBody.rows{ display:block; }
+
+/* コンテキスト行（選択中・ペン進行中だけ出す） */
+#penbar, #editbar{ display:none; }
+body.penning #penbar{ display:block; }
+body.editing #editbar{ display:block; }
+#selCount{ font-family:var(--font-mono); color:var(--color-text-secondary); }
+
+/* =========================================================
+   7. form controls
+========================================================= */
+input[type=range]{
+  -webkit-appearance:none; appearance:none;
+  width:120px; height:2px; margin:0;
+  background:var(--color-border-primary); border-radius:var(--radius-xs);
+  vertical-align:middle; cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none;
+  width:14px; height:14px; border:none; border-radius:var(--radius-xs);
+  background:var(--color-action-primary);
+}
+input[type=range]::-moz-range-thumb{
+  width:14px; height:14px; border:none; border-radius:var(--radius-xs);
+  background:var(--color-action-primary);
+}
+input[type=range]:focus-visible{ outline:2px solid var(--color-focus-ring); outline-offset:var(--focus-ring-offset); }
+input[type=color]{
+  -webkit-appearance:none; appearance:none;
+  width:32px; height:var(--control-height-tool); padding:0;
+  border:var(--border-width-default) solid var(--color-border-primary);
+  border-radius:var(--radius-sm); background:none; cursor:pointer; vertical-align:middle;
+}
+input[type=color]::-webkit-color-swatch-wrapper{ padding:2px; }
+input[type=color]::-webkit-color-swatch{ border:none; border-radius:var(--radius-xs); }
+input[type=color]::-moz-color-swatch{ border:none; border-radius:var(--radius-xs); }
+#file, #jsonIn{ display:none; }
+
+/* 角数のステッパー */
+#sidesWrap{ display:inline-flex; align-items:center; gap:0; opacity:.4; }
+body.tool-poly #sidesWrap{ opacity:1; }
+#sidesVal{ font-family:var(--font-mono); font-size:var(--font-size-md); min-width:20px; text-align:center; }
+
+/* 数値チップ（太さ・濃度・角丸・輪郭の距離）＝量子化された入力の美学 */
+#wChips, #aChips, #rChips{ display:inline-flex; gap:2px; }
+#wChips button, #aChips button, #rChips button, .numChip{
+  font-family:var(--font-mono); min-width:30px; padding:0 var(--space-1);
+}
+
+/* =========================================================
+   8. 展開一覧（メイン）
+========================================================= */
+#results, #live, #edit{ flex:1; min-width:0; }
+.grpTitle{
+  margin:0 0 var(--space-3);
+  font-size:var(--font-size-sm); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-muted);
+}
+.grpTitle + .grpTitle{ margin-top:var(--space-6); }
+.row{ display:flex; flex-wrap:wrap; gap:var(--space-4); margin-bottom:var(--space-8); }
+.tools{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-1); margin-bottom:var(--space-2); }
+
+.sw{ position:relative; cursor:pointer; }
+.sw canvas{
+  display:block; width:190px; height:190px;
+  border:var(--border-width-default) solid var(--color-border-secondary);
+  border-radius:var(--radius-sm); background:var(--art-paper);
+  transition:border-color var(--duration-fast) var(--easing);
+}
+.sw:hover canvas{ border-color:var(--color-border-primary); }
+.sw .lb{
+  margin-top:var(--space-1);
+  font-family:var(--font-mono); font-size:var(--font-size-sm);
+  color:var(--color-text-secondary); text-align:left;
+}
+.sw.sel canvas{ border-color:var(--color-accent); box-shadow:0 0 0 1px var(--color-accent); }
+.sw.sel .lb{ color:var(--color-accent); font-weight:var(--font-weight-medium); }
+.sw .swDel, .sw .swEdit{
+  position:absolute; top:var(--space-1); height:var(--control-height-sm); min-width:var(--control-height-sm);
+  padding:0; color:var(--color-text-muted); font-size:var(--font-size-sm);
+  background:var(--color-surface-primary); border-radius:var(--radius-sm); opacity:0;
+  transition:opacity var(--duration-fast) var(--easing);
+}
+.sw .swDel{ right:var(--space-1); }
+.sw .swEdit{ right:calc(var(--space-1) + var(--control-height-sm) + 2px); }
+.sw:hover .swDel, .sw:hover .swEdit, .sw .swDel:focus-visible, .sw .swEdit:focus-visible{ opacity:1; }
+.sw .swDel:hover, .sw .swEdit:hover{ color:var(--color-text-primary); background:var(--color-surface-secondary); }
+
+/* カスタム群ビルダー */
+#cgPanel{
+  margin-bottom:var(--space-6); padding:var(--space-4);
+  border:var(--border-width-default) solid var(--color-border-secondary);
+  border-radius:var(--radius-md); background:var(--color-surface-secondary);
+  max-width:520px;
+}
+.genChip{
+  display:inline-flex; align-items:center; gap:2px;
+  height:var(--control-height-md); padding:0 var(--space-1);
+  border:var(--border-width-default) solid var(--color-border-primary);
+  border-radius:var(--radius-sm); background:var(--color-surface-primary);
+  font-size:var(--font-size-sm);
+}
+.genChip button{ height:var(--control-height-sm); min-width:24px; padding:0; font-size:var(--font-size-sm); }
+.genChip > span{ padding:0 2px; font-family:var(--font-mono); color:var(--color-text-primary); }
+.genChip > span.lbl{ font-family:var(--font-sans); }
+#cgPreview{
+  display:block; margin:var(--space-3) 0 var(--space-2);
+  border:var(--border-width-default) solid var(--color-border-secondary);
+  border-radius:var(--radius-sm); background:var(--art-paper);
+}
+#cgInfo{ font-family:var(--font-mono); font-size:var(--font-size-sm); color:var(--color-text-secondary); }
+
+.hint{
+  margin-top:var(--space-2); max-width:560px;
+  font-size:var(--font-size-sm); line-height:var(--line-height-body); color:var(--color-text-muted);
+}
+
+/* ライブ / 編集 */
+#livePanel{ display:flex; flex-wrap:wrap; gap:var(--space-4); align-items:flex-start; }
+#livePanel canvas{
+  display:block; max-width:100%; height:auto;
+  border:var(--border-width-default) solid var(--color-border-secondary);
+  border-radius:var(--radius-sm); background:var(--art-paper);
+}
+#livePanel .lb{
+  margin-top:var(--space-1);
+  font-family:var(--font-mono); font-size:var(--font-size-sm); color:var(--color-text-secondary);
+}
+#liveHint{ margin-top:var(--space-4); font-size:var(--font-size-sm); color:var(--color-text-muted); }
+#editCv{
+  display:block; max-width:100%;
+  border:var(--border-width-default) solid var(--color-border-primary);
+  border-radius:var(--radius-sm); background:var(--art-paper);
+  touch-action:none; cursor:crosshair;
+}
+/* 展開ビューの主ツール（選択／アンカー／形成）。ツール別の設定は選択中の1つだけ出す */
+#editToolSeg button{ height:var(--control-height-md); padding:0 var(--space-4); }
+#editToolSeg .key{ margin-left:var(--space-2); opacity:.65; }
+.etSpacer{ flex:1; }
+.etOpt{ display:none; }
+.etOpt.on{ display:flex; }
+/* 「いま何ができるか」の1行。ヒント(.hint)より手前・強めに置く＝読まれないと道具が使えない情報 */
+.etHow{
+  font-size:var(--font-size-sm); line-height:var(--line-height-ui);
+  color:var(--color-text-secondary); padding:0 var(--space-1);
+}
+#etSnapWrap{ margin-bottom:var(--space-3); max-width:560px; }
+
+/* モード出し分け */
+#live, #edit{ display:none; }
+body.mode-grid #results{ display:block; }
+body.mode-live #live{ display:block; }
+body.mode-live #results{ display:none; }
+body.mode-edit #edit{ display:block; }
+body.mode-edit #results, body.mode-edit #live{ display:none; }
+body.mode-live .exportRow{ display:none; }   /* ライブ=遊ぶモードでは書き出しを隠す */
+
+/* PC（広い画面）: ライブでも一覧を右に併置（pad | live | grid） */
+@media (min-width:1280px){
+  body.mode-live #results{ display:block; order:2; }
+  body.mode-live #live{ order:1; }
+  body.mode-live .exportRow{ display:block; }
+}
+
+/* =========================================================
+   9. ヘルプ（浮遊要素なので影を持つ唯一の場所）
+========================================================= */
+#cheat{
+  position:fixed; right:var(--space-5); bottom:var(--space-5); z-index:30;
+  width:min(560px, calc(100vw - var(--space-8)));
+  max-height:min(70vh, 640px); overflow-y:auto;
+  padding:calc(var(--space-5) + var(--control-height-sm)) var(--space-5) var(--space-5);
+  border:var(--border-width-default) solid var(--color-border-secondary);
+  border-radius:var(--radius-lg); background:var(--color-surface-primary);
+  box-shadow:var(--shadow-floating);
+  font-size:var(--font-size-sm); line-height:var(--line-height-body);
+  color:var(--color-text-secondary); white-space:pre-line;
+  -webkit-user-select:text; user-select:text;
+}
+#cheat[hidden]{ display:none; }
+#cheatClose{ position:absolute; top:var(--space-2); right:var(--space-2); }
+
+/* =========================================================
+   10. レスポンシブ（縮小ではなく構造を変える。タップ領域44px以上）
+========================================================= */
+@media (max-width:900px){
+  /* アプリバーは「モード + ヘルプ」だけに絞る（ブランドはアプリ内では不要） */
+  .appbar{ padding:0 var(--space-3); gap:var(--space-2); }
+  .brand{ display:none; }
+  .seg button{ padding:0 var(--space-2); }
+  #layout{ flex-direction:column; gap:var(--space-6); padding:var(--space-4); }
+  #padCol{
+    width:100%; position:static; max-height:none; overflow:visible; padding-right:0;
+  }
+  /* 縦積みでは「いま見ているもの」を先頭に置き、**貼り付けて常に見える**ようにする。
+     編集している当のものが、パネルを送ると画面外に消える——を作らない */
+  #layout{ display:flex; flex-direction:column; }
+  body.mode-edit #edit,
+  body.mode-live #live{ order:-1; }
+  /* **編集しているものは常に画面にある**。sticky では #edit の底で止まってしまうので、
+     縦積みでは画面に固定する。帯に入れるのは「ツール行＋いまのツールの設定＋展開」だけで、
+     吸着の詳細と長い説明は畳む（帯が厚いとかえって編集できない）。
+     帯の高さは中身で変わるので JS が --sp-edit-h に測って入れ、その分だけ本文を下げる */
+  body.mode-edit #edit{
+    position:fixed; top:var(--control-height-lg); left:0; right:0; z-index:10;
+    display:flex; flex-direction:column; align-items:flex-start;
+    padding:var(--space-1) var(--space-3) var(--space-2);
+    background:var(--color-background);
+    border-bottom:var(--border-width-default) solid var(--color-border-secondary);
+  }
+  body.mode-edit #edit > .grpTitle,
+  body.mode-edit #etSnapWrap,
+  body.mode-edit #editHint,
+  body.mode-edit .etHow{ display:none; }
+  body.mode-edit #layout{ padding-top:var(--sp-edit-h, 420px); }
+  /* 狭い画面ではブランドを畳んで、戻す・全消去のための幅をあける。
+     やり直すは左パネルの「記録」に残るので、ここでは落とす（間違えたら戻すだけで足りる） */
+  .appbar{ gap:var(--space-1); padding:0 var(--space-2); }
+  .barAct{ height:var(--control-height-md); padding:0 var(--space-2); font-size:var(--font-size-sm); }
+  #barRedo{ display:none; }
+  .seg button{ padding:0 var(--space-2); font-size:var(--font-size-sm); }
+  .padStick{ position:static; }   /* 縦積みではパッドが画面の大半を占めるので貼り付けない */
+  #pad{ width:min(92vw, 460px); height:min(92vw, 460px); }
+  #editCv{ max-width:86vw; }
+  button, label.btn, a.btn{ height:var(--control-height-lg); padding:0 var(--space-3); }
+  details.sub > summary{ height:var(--control-height-lg); }
+  summary.grpHd{ height:var(--control-height-lg); }   /* セクションの入口もタップ領域44px */
+  #grpDraw > .prow.full > .pbody > button{ padding:0 var(--space-3); }   /* 密度より指を優先 */
+  .seg button{ height:var(--control-height-md); }
+  .prow{ grid-template-columns:1fr; }
+  .plbl{ padding-top:0; margin-bottom:var(--space-1); }
+  input[type=range]{ height:4px; width:min(60vw,220px); }
+  input[type=range]::-webkit-slider-thumb{ width:22px; height:22px; }
+  input[type=range]::-moz-range-thumb{ width:22px; height:22px; }
+  input[type=color]{ height:var(--control-height-lg); width:44px; }
+  .sw canvas{ width:min(43vw,190px); height:min(43vw,190px); }
+  .sw .swDel, .sw .swEdit{ opacity:1; }   /* hoverが無い端末では常時表示 */
+  #cheat{ left:var(--space-3); right:var(--space-3); bottom:var(--space-3); width:auto; }
+}
+</style>
+</head>
+<body>
+
+<header class="appbar">
+  <!-- ロゴタイプ（assets/logotype.svg をインライン化＝単一HTMLビルドでも消えない）。色は currentColor -->
+  <span class="brand" role="img" aria-label="symmetry machine">
+    <svg viewBox="0 0 49.74 10.39" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
+      <path d="M.63,6.22c.2.77.76,1.24,1.69,1.24,1.06,0,1.49-.49,1.49-1.15s-.29-1.01-1.62-1.33c-1.56-.37-1.94-.85-1.94-1.64s.62-1.59,1.99-1.59,2.02.83,2.11,1.68h-.62c-.11-.5-.5-1.12-1.51-1.12s-1.33.5-1.33.98c0,.54.29.82,1.46,1.1,1.71.41,2.12.97,2.12,1.87,0,1.08-.89,1.76-2.16,1.76-1.38,0-2.15-.72-2.31-1.8h.63Z"/>
+      <path d="M5.96,1.87c1.2,3.4,1.73,4.82,1.93,5.47h.01c.24-.73.71-2.12,1.87-5.47h.65l-2.26,6.35c-.64,1.78-1.07,2.17-2.16,2.17-.21,0-.36-.01-.55-.04v-.62c.18.02.35.04.54.04.85,0,1.13-.41,1.57-1.63L5.28,1.87h.68Z"/>
+      <path d="M11.69,3.42c0-.52,0-1.08-.01-1.55h.61c.01.19.04.71.02,1.05.25-.6.8-1.2,1.8-1.2.84,0,1.49.42,1.73,1.17.3-.62.9-1.17,1.96-1.17.94,0,1.88.53,1.88,2.19v3.95h-.62v-3.88c0-.8-.29-1.67-1.39-1.67s-1.67.92-1.67,2.09v3.46h-.62v-3.86c0-.86-.25-1.68-1.36-1.68s-1.71,1.02-1.71,2.24v3.3h-.62V3.42Z"/>
+      <path d="M21.65,3.42c0-.52,0-1.08-.01-1.55h.61c.01.19.04.71.03,1.05.25-.6.8-1.2,1.8-1.2.84,0,1.49.42,1.73,1.17.3-.62.9-1.17,1.96-1.17.94,0,1.88.53,1.88,2.19v3.95h-.62v-3.88c0-.8-.29-1.67-1.39-1.67s-1.67.92-1.67,2.09v3.46h-.62v-3.86c0-.86-.25-1.68-1.36-1.68s-1.71,1.02-1.71,2.24v3.3h-.62V3.42Z"/>
+      <path d="M31.76,4.94c.01,1.54.78,2.5,1.93,2.5s1.5-.64,1.71-1.13h.65c-.25.79-.9,1.7-2.38,1.7-1.84,0-2.54-1.57-2.54-3.1,0-1.73.85-3.19,2.62-3.19s2.44,1.58,2.44,2.72c0,.17,0,.33-.01.49h-4.4ZM35.53,4.4c-.01-1.18-.65-2.1-1.81-2.1-1.24,0-1.79.85-1.92,2.1h3.73Z"/>
+      <path d="M36.84,1.87h1.12V0h.62v1.87h1.43v.57h-1.43v3.88c0,.67.14,1.06.72,1.06.18,0,.43-.01.61-.07v.54c-.2.08-.49.11-.74.11-.78,0-1.21-.39-1.21-1.35V2.45h-1.12v-.57Z"/>
+      <path d="M41.12,3.5c0-1.01-.01-1.44-.01-1.63h.61c.01.18.02.58.02,1.33.35-.9,1.1-1.43,2.09-1.47v.66c-1.25.08-2.09.94-2.09,2.38v3.11h-.62V3.5Z"/>
+      <path d="M45.27,1.87c1.2,3.4,1.73,4.82,1.93,5.47h.01c.24-.73.71-2.12,1.87-5.47h.65l-2.26,6.35c-.63,1.78-1.07,2.17-2.16,2.17-.22,0-.36-.01-.55-.04v-.62c.18.02.35.04.54.04.85,0,1.13-.41,1.57-1.63l-2.29-6.26h.68Z"/>
+    </svg>
+  </span>
+  <nav class="seg" id="modebar" aria-label="モード">
+    <button id="modeLive">ライブ</button>
+    <button id="modeGrid">一覧</button>
+    <button id="modeEdit">展開を編集</button>
+  </nav>
+  <span class="spacer"></span>
+  <!-- 取り消しと全消去は「手が届く場所」に置く。左パネルの最下部（1400px下）では実質存在しないのと同じで、
+       とくにスマホでは唯一の窓口になる。アプリバーは sticky なのでスクロールしても追従する -->
+  <button id="barUndo" class="barAct" title="ひとつ戻す（⌘Z）">戻す</button>
+  <button id="barRedo" class="barAct" title="やり直す（⌘⇧Z）">やり直す</button>
+  <button id="barClear" class="barAct btn-danger" title="ぜんぶ消す（⌘Zで戻せます）">全消去</button>
+  <button id="helpBtn" class="btn-2nd">ヘルプ</button>
+</header>
+
+<div id="layout">
+  <aside id="padCol">
+    <!-- 造形（パッド）は列内スクロールでも上に貼り付ける＝パネルを送っても手元が見えたまま -->
+    <div class="padStick">
+      <canvas id="pad"></canvas>
+      <div id="stateHint"></div>
+    </div>
+
+    <div id="panel">
+
+      <!-- ============ 描く（起動時は開いている） ============ -->
+      <details class="grp" id="grpDraw" open>
+        <summary class="grpHd">描く</summary>
+        <!-- 道具箱は一塊で読むものなのでラベル列を持たない（全幅なら3行→2行に収まる） -->
+        <div class="prow full">
+          <div class="pbody">
+            <button class="tg" id="tMove">選択<span class="key">V</span></button>
+            <button class="tg" id="tAnchor">アンカー<span class="key">A</span></button>
+            <button class="tg" id="tForm">形成<span class="key">⇧M</span></button>
+            <button class="tg" id="tFree">手描き<span class="key">N</span></button>
+            <button class="tg" id="tPen">ペン<span class="key">P</span></button>
+            <button class="tg" id="tLine">直線</button>
+            <button class="tg" id="tRect">矩形<span class="key">M</span></button>
+            <button class="tg" id="tEllipse">円<span class="key">L</span></button>
+            <button class="tg" id="tPoly">多角形</button>
+            <button class="tg" id="tErase">消しゴム<span class="key">E</span></button>
+          </div>
+        </div>
+        <div class="prow full">
+          <div class="pbody">
+            <details class="sub" id="subDrawOpt">
+              <summary>造形の設定 — ロック・角数・整え</summary>
+              <div class="subBody rows">
+                <div class="prow">
+                  <span class="plbl">造形</span>
+                  <div class="pbody">
+                    <button class="tg" id="padLock">ロック</button>
+                    <span class="lbl">展開だけを触りたいときに</span>
+                  </div>
+                </div>
+                <div class="prow">
+                  <span class="plbl">角数</span>
+                  <div class="pbody">
+                    <span id="sidesWrap"><button id="sidesDown">−</button><span id="sidesVal">6</span><button id="sidesUp">＋</button></span>
+                    <span class="lbl">多角形ツールのとき</span>
+                  </div>
+                </div>
+                <div class="prow">
+                  <span class="plbl">整え</span>
+                  <div class="pbody">
+                    <input type="range" id="tidyRange" min="0" max="16" step="0.5" value="0"
+                           title="手描き線をシンプルなパスに整える（raw座標は変えない）">
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ 見た目（起動時は開いている） ============
+           常設の2つ（描く・見た目）を上に固めて、出たり消えたりする文脈パネル（ペン・選択）を下に置く。
+           逆にすると、何かを選ぶたびに「見た目」が 250px ほど下へ飛ばされて位置を覚えられない -->
+      <details class="grp" id="grpStyle" open>
+        <summary class="grpHd" id="styleLbl">見た目</summary>
+        <!-- 塗りと線は必ず対で読むので1行にまとめる（イラレのコントロールバーと同じ並び） -->
+        <div class="prow full">
+          <div class="pbody">
+            <span class="lbl">塗り</span>
+            <button class="tg" id="fillInk">インク</button>
+            <button class="tg" id="fillPaper">紙</button>
+            <button class="tg" id="fillNone">なし</button>
+            <span class="lbl">線</span>
+            <button class="tg" id="strokeOn">あり</button>
+            <button class="tg" id="strokeOff">なし</button>
+          </div>
+        </div>
+        <div class="prow">
+          <span class="plbl">太さ</span>
+          <div class="pbody"><span id="wChips"></span></div>
+        </div>
+        <div class="prow full">
+          <div class="pbody">
+            <details class="sub" id="subStyleMore">
+              <summary>濃度・角丸・色</summary>
+              <div class="subBody rows">
+                <div class="prow">
+                  <span class="plbl">濃度</span>
+                  <div class="pbody"><span id="aChips"></span></div>
+                </div>
+                <div class="prow">
+                  <span class="plbl">角丸</span>
+                  <div class="pbody"><span id="rChips"></span></div>
+                </div>
+                <div class="prow">
+                  <span class="plbl">色</span>
+                  <div class="pbody">
+                    <input type="color" id="inkColor" value="#0044cc" title="線・塗りの色（インク）">
+                    <span class="lbl">インク</span>
+                    <input type="color" id="paperColor" value="#ffffff" title="地の色（紙）">
+                    <span class="lbl">紙</span>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ ペン（進行中のみ） ============ -->
+      <section class="grp" id="penbar">
+        <h2 class="grpHd">ペン</h2>
+        <div class="prow">
+          <span class="plbl"></span>
+          <div class="pbody">
+            <button id="penClose">閉じて確定</button>
+            <button id="penDone">確定</button>
+            <button id="penCancel">取消</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 選択（選択時のみ・よく使う6つ + 役割ごとに畳む） ============ -->
+      <section class="grp" id="editbar">
+        <h2 class="grpHd">選択<span id="selCount"></span></h2>
+        <div class="prow">
+          <span class="plbl"></span>
+          <div class="pbody">
+            <button id="objDup">複製<span class="key">⌘D</span></button>
+            <button id="objFront">前面<span class="key">]</span></button>
+            <button id="objBack">背面<span class="key">[</span></button>
+            <button class="tg" id="objStill">静止</button>
+            <button id="objDone">選択を解除</button>
+            <button id="objDel" class="btn-danger">削除</button>
+          </div>
+        </div>
+        <div class="prow">
+          <span class="plbl"></span>
+          <div class="pbody">
+            <details class="sub" id="subXform">
+              <summary>変形・整列</summary>
+              <div class="subBody">
+                <button id="rotL">回転−</button>
+                <button id="rotR">回転＋<span class="key">R</span></button>
+                <button id="scDown">縮小</button>
+                <button id="scUp">拡大<span class="key">S</span></button>
+                <span class="lbl">整列</span>
+                <button id="alL">左</button><button id="alC">中</button><button id="alR">右</button>
+                <button id="alT">上</button><button id="alM">中</button><button id="alB">下</button>
+                <span class="lbl">等間隔</span>
+                <button id="disH">横</button><button id="disV">縦</button>
+              </div>
+            </details>
+            <details class="sub" id="subPath">
+              <summary>パスを編む</summary>
+              <div class="subBody">
+                <button id="objSwap">塗り⇄線<span class="key">⇧X</span></button>
+                <button id="objSmooth">なめらかに</button>
+                <button id="objSpline" title="点を制御点として扱い、曲線が点を通らなくなる（角が丸まり、動かしても暴れない）">Bスプライン</button>
+                <button id="objThin">間引く</button>
+                <button id="objClose">パスを閉じる</button>
+                <button id="objJoin">つなぐ<span class="key">⌘J</span></button>
+                <button id="objCut">アンカーで切る<span class="key">⌘⇧K</span></button>
+              </div>
+            </details>
+            <details class="sub" id="subBool">
+              <summary>重なりを演算する</summary>
+              <div class="subBody">
+                <button id="opUnite">合体</button>
+                <button id="opMinus">型抜き</button>
+                <button id="opCross">交差</button>
+                <button id="opDivide">面に分割</button>
+              </div>
+            </details>
+            <details class="sub" id="subOffset">
+              <summary>輪郭をずらす</summary>
+              <div class="subBody">
+                <button class="tg on" id="ofOut">外へ</button>
+                <button class="tg" id="ofIn">内へ</button>
+                <span class="lbl">px</span>
+                <button class="numChip" id="of2">2</button>
+                <button class="numChip" id="of4">4</button>
+                <button class="numChip" id="of8">8</button>
+                <button class="numChip" id="of16">16</button>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 展開（起動時は畳む。見出しが入口として残る） ============ -->
+      <details class="grp" id="grpExpand">
+        <summary class="grpHd">展開</summary>
+        <div class="prow" id="paramRow">
+          <span class="plbl">セル</span>
+          <div class="pbody"><input type="range" id="cellRange" min="48" max="120" step="4" value="72"></div>
+        </div>
+        <div class="prow">
+          <span class="plbl">断片</span>
+          <div class="pbody"><input type="range" id="scaleRange" min="0.35" max="1" step="0.05" value="0.65"></div>
+        </div>
+        <div class="prow">
+          <span class="plbl">ガイド</span>
+          <div class="pbody">
+            <button class="tg" id="gOff">なし</button>
+            <button class="tg" id="gGrid">格子</button>
+            <button class="tg" id="gCircle">同心円</button>
+            <button class="tg" id="snapBtn">吸着</button>
+          </div>
+        </div>
+        <div class="prow">
+          <span class="plbl">中心</span>
+          <div class="pbody">
+            <button class="tg" id="tAxis">回転中心を置く</button>
+          </div>
+        </div>
+        <div class="prow">
+          <span class="plbl">重なり</span>
+          <div class="pbody">
+            <button class="tg" id="ovEach">そのまま</button>
+            <button class="tg" id="ovMerge">重なりを埋める</button>
+            <button class="tg" id="ovPunch">重なりを穴に</button>
+          </div>
+        </div>
+        <div class="prow">
+          <span class="plbl">連動</span>
+          <div class="pbody">
+            <button id="flattenExp">対称を解いて実体にする</button>
+            <span class="lbl">形成した結果はそのまま書き出せます。ここを押すのは「手で1つずつ触りたい」ときだけ</span>
+          </div>
+        </div>
+      </details>
+
+      <!-- ============ 記録・書き出し（ドキュメントの出し入れは1セクションに束ねる） ============ -->
+      <details class="grp" id="grpIO">
+        <summary class="grpHd">記録・書き出し</summary>
+        <div class="prow">
+          <span class="plbl">履歴</span>
+          <div class="pbody">
+            <button id="undo">戻す<span class="key">⌘Z</span></button>
+            <button id="redo">やり直す</button>
+            <button id="clear" class="btn-danger">全消去</button>
+          </div>
+        </div>
+        <div class="prow">
+          <span class="plbl">読み書き</span>
+          <div class="pbody">
+            <label class="btn" for="file">画像・SVGを読む</label>
+            <input id="file" type="file" accept="image/*,.svg,image/svg+xml">
+            <button id="jsonOut">保存</button>
+            <label class="btn" for="jsonIn">読み込む</label>
+            <input id="jsonIn" type="file" accept="application/json,.json">
+          </div>
+        </div>
+        <!-- ライブ=遊ぶモードでは書き出しだけを隠す（記録は残す） -->
+        <div class="exportRow">
+          <div class="prow">
+            <span class="plbl">書き出し</span>
+            <div class="pbody">
+              <button id="saveSvg" class="btn-2nd">SVG</button>
+              <button id="savePng" class="btn-2nd">PNG</button>
+              <button id="copySvg">コードをコピー</button>
+            </div>
+          </div>
+          <div class="prow">
+            <span class="plbl">PNG</span>
+            <div class="pbody">
+              <button class="tg" id="s2">2x</button>
+              <button class="tg" id="s4">4x</button>
+              <span class="lbl">背景</span>
+              <button class="tg" id="bgWhite">白</button>
+              <button class="tg" id="bgClear">透明</button>
+              <button id="saveAllPng">全部</button>
+            </div>
+          </div>
+          <div class="prow">
+            <span class="plbl">共有</span>
+            <div class="pbody">
+              <button id="galleryUp">ギャラリーへ投稿</button>
+              <a href="gallery.html" class="btn">ギャラリーを見る</a>
+            </div>
+          </div>
+        </div>
+      </details>
+
+    </div>
+  </aside>
+
+  <main id="results">
+    <div class="grpTitle">カスタム — 生成元を組む</div>
+    <div class="tools">
+      <button id="cgNew" class="btn-2nd">＋ 新しいルール</button>
+      <button id="cgUndo" style="display:none" title="直近に削除したルールを戻す">戻す</button>
+    </div>
+    <div id="cgPanel" style="display:none">
+      <div class="tools"><span class="lbl" id="cgTitle"></span></div>
+      <div class="tools" id="cgGens"></div>
+      <div class="tools">
+        <span class="lbl">足す</span>
+        <button id="cgAddRot">回転</button>
+        <button id="cgAddMirror">鏡映</button>
+        <button id="cgAddGlide">映進</button>
+        <button id="cgAddTrans">並進</button>
+      </div>
+      <canvas id="cgPreview"></canvas>
+      <div class="tools">
+        <button id="cgSave" class="btn-2nd">保存</button>
+        <button id="cgCancel">やめる</button>
+        <span class="lbl" id="cgInfo"></span>
+      </div>
+      <div class="hint">回転n・鏡映（軸の角度）・映進（軸の角度＋距離d）・並進（方向＋距離d）を足すと、組み合わせで生まれる全操作（閉包）を自動展開します。回転の「中心」を軸からずらすと、合成が並進になってロゼットが帯や格子に育ちます。dはスワッチ辺との比。保存後は他の群と同じ扱い（選択・ライブ・SVG/PNG・中心の追従）。発散する組も上限600で打ち切って見られます。</div>
+    </div>
+    <div class="row" id="customs"></div>
+    <div class="grpTitle">単体シンボル — 回転（C2–C12）</div>
+    <div class="row" id="rosettesC"></div>
+    <div class="grpTitle">単体シンボル — 回転＋鏡映（D3–D12）</div>
+    <div class="row" id="rosettesD"></div>
+    <div class="grpTitle">帯パターン — フリーズ群 7種</div>
+    <div class="row" id="friezes"></div>
+    <div class="grpTitle">面パターン — 壁紙群 17種</div>
+    <div class="row" id="wallpapers"></div>
+  </main>
+
+  <main id="live">
+    <div class="grpTitle">ライブ — 一覧で選んだ群（未選択ならお気に入り）</div>
+    <div id="livePanel"></div>
+    <div id="liveHint"></div>
+  </main>
+
+  <main id="edit">
+    <div class="grpTitle">展開を編集 — 展開の上で直接さわる（対称は保たれる）</div>
+
+    <!-- 主ツール（排他）。「いま何ができるか」を1つに決める -->
+    <div class="tools">
+      <div class="seg" id="editToolSeg">
+        <button id="etSelect">選択<span class="key">V</span></button>
+        <button id="etAnchor">アンカー<span class="key">A</span></button>
+        <button id="etShape">形成<span class="key">⇧M</span></button>
+      </div>
+    </div>
+
+    <!-- 選んでいるツールの設定だけを出す。1行目に「いま何ができるか」を必ず置く -->
+    <div class="tools etOpt" id="etOptSelect">
+      <span class="etHow">クリック＝選ぶ　⇧＝足す　空所ドラッグ＝まとめて選ぶ　角＝拡大縮小　角の外＝回転　⌫＝削除</span>
+      <span class="lbl" id="etSelInfo"></span>
+    </div>
+    <div class="tools etOpt" id="etOptAnchor">
+      <span class="etHow">ドラッグ＝動かす　線の上をダブルクリック＝アンカー追加　アンカーをダブルクリック＝角⇄なめらか</span>
+      <span class="lbl">表示</span>
+      <button class="tg" id="anOne">1コピー</button>
+      <button class="tg" id="anAll">すべて</button>
+      <button class="tg" id="anOff">隠す</button>
+    </div>
+    <div class="tools etOpt" id="etOptShape">
+      <span class="etHow">クリック＝その領域を1つの形に　⌥＋クリック＝けずる（線の上なら<b>その線だけ消す</b>）　なぞる＝まとめて</span>
+      <button id="shapeReset">形成をリセット</button>
+      <span class="lbl" id="cutCount"></span>
+    </div>
+
+    <details class="sub" id="etSnapWrap">
+      <summary>吸着するもの</summary>
+      <div class="subBody">
+        <div class="tools">
+          <button class="tg" id="snAnchor">アンカー</button>
+          <button class="tg" id="snCross">交点</button>
+          <button class="tg" id="snCenter">回転中心</button>
+          <button class="tg" id="snMid">中点</button>
+          <button class="tg" id="snAxis">鏡映軸</button>
+          <button class="tg" id="snEdge">輪郭</button>
+        </div>
+        <div class="hint">交点＝ベースの線と複製が交わるところ（×印で出ます）。左に並んでいるものほど強く勝ちます。「吸着」そのものは左の造形パネルでオン／オフ。ドラッグ中に ⇧ を押すと一時的に切れます。</div>
+      </div>
+    </details>
+
+    <canvas id="editCv"></canvas>
+    <div class="hint" id="editHint"></div>
+  </main>
+</div>
+
+<div id="cheat" hidden><button id="cheatClose" aria-label="閉じる">×</button>ツール: V=選択 / A=アンカー / ⇧M=形成 / N=手描き / P=ペン / M=矩形 / L=円 / E=消しゴム（単キーは日本語入力ON・入力欄では効かない）
+　V・A・⇧M は「いま見ている側」に効く（展開を編集の画面では展開側／それ以外では造形パッド側）
+アンカー選択ツール A（イラレのダイレクト選択）= パッドで形を1クリックするとアンカーが出る。選択ツールのダブルクリックでも同じ
+造形をロック = 左のパッドを触れなくする（展開ビューだけをいじりたいときに、誤って描き足す事故を防ぐ）
+
+重なり（展開の後処理・いつでも戻せる）
+　そのまま = コピーごとに描く（重なりの線が見える）
+　重なりを埋める = 重なった部分が埋まって1つの輪郭に見える / 重なりを穴に = 重なった領域が穴になる
+　※ editbar の「合体」（重なりを演算する）とは別物。あちらはパスそのものを1つにする不可逆な操作
+　※ モチーフには触れないので、対称の連動もアンカー編集もそのまま。トグルで即座に行き来できる
+　※ 線（塗りなし）は「面」ではないので重なりを解釈できない。「輪郭」で面に変えてから使う
+対称を解いて実体にする = 展開された全コピーを実体のオブジェクトに焼き込む（対称の連動は解ける・⌘Zで戻る）。
+　形成した結果はこれを押さなくてもSVG・PNG・スワッチにそのまま出るので、押すのは「手で1つずつ触りたい」ときだけ。
+　その後は 合体／面に分割／削除 で自由に手を入れられる
+
+展開を編集（右の画面）= 3つのツールを切り替えて使う。どのコピーを掴んでも、直したことは全コピーに連動する
+　■ 選択 V = 形をクリックすると枠（バウンディングボックス）が出る。左の造形パッドと同じことが右でもできる
+　　shift+クリック=追加 / 空所ドラッグ=まとめて選ぶ / ⌘A=全部 / Esc=解除
+　　枠の中をドラッグ=移動 / 角=拡大縮小（⇧=等比）/ 辺=一方向に伸縮 / 角の少し外=回転（⇧=15°）
+　　矢印キー=1pxずつ移動（⇧で10px）/ delete=削除 / 左のスタイルチップ（塗り・線・太さ・濃度・角R）もこの選択に効く
+　　掴んだコピーの見た目どおりに動く（鏡に映ったコピーを掴めば、造形パッド側は左右逆に動く＝鏡の中の手）
+　■ アンカー A = アンカーをドラッグ=対称位置が全部連動（どのコピーを掴んでもOK）
+　　線の上をダブルクリック=アンカー追加 / アンカーをダブルクリック=角⇄なめらか（丸=なめらか・四角=角）/ delete=削除
+　　図形・手描きは掴んだ瞬間にパス化（手描きは滑らかさを保ったまま疎なアンカーになる・細かさは整えに追従）
+　　アンカー表示: 1コピー（既定）/ すべて / 隠す。「隠す」は形だけ見るモード（掴めない）
+　■ 形成 ⇧M = イラレのシェイプ形成ツール。重なりでできた領域を選んで扱う
+　　⇧M はトグル。もう一度押すと直前のツール（選択/アンカー）に戻る＝一時的に持ち替える道具として使える
+　　クリック=その領域を1つの形にする（囲まれた面が塗られる）/ ⌥+クリック=けずる（紙色の穴になる）
+　　⌥+線の上=その線だけ消す（交点から交点までが1本。赤くなぞられたところが消える）
+　　なぞればまとめて（複数の領域を1つにつなぐ / ⌥でまとめてけずる）。もう一度触ると戻る
+　　選択ツールで形を選んでから持ち替えると、その形だけが対象になる（破線で範囲が出る）。未選択なら全部が対象
+　　触った領域の対称の兄弟も同時に処理するので対称は保たれる。モチーフには無傷なので「形成をリセット」でいつでも元通り（⌘Zとは別。描いた線は消えない）
+　　形成の結果は**そのまま書き出せる**（SVG/PNG/選択中スワッチが同じ形になる）。持ち出しに確定は要らない
+　　※ 群を変えると「どの領域か」の意味が変わるので、形成の記録はリセットされる
+形成 ⇧M（造形パッド側）= 同じ操作をモチーフに直接（クリック=1つの形に / ⌥+クリック=けずる / なぞればまとめて）
+　こちらは実体を書き換える（パスが面に分かれる・⌘Zで戻せる）
+　右が非破壊なのは対称の連動を壊さないため。左は真実そのものなのでイラレと同じく実体が変わる
+吸着するもの（展開を編集の中）= アンカー / 回転中心 / 中点 / 鏡映軸 / 輪郭 を種類ごとにオン・オフできる
+　上にあるものほど強く勝つ。吸着そのもののオン・オフは造形パネルの「吸着」
+選択: shift+クリック=追加 / 空所ドラッグ=まとめて選択 / ⌘A=全選択 / delete=削除 / Esc=解除
+変形: 角をドラッグ=拡大縮小（shift=等比）/ 角の少し外側をドラッグ=回転（shift=15°刻み）/ 辺=一方向に伸縮
+　　　R=15°回転（shift+R=逆回転）/ S=拡大（shift+S=縮小）/ 矢印=移動（shift=10px）
+複製: ⌘D・複製ボタン・option+ドラッグ / ⌘C ⌘X ⌘V=オブジェクトのコピー・カット・ペースト
+重ね順: 前面/背面（] [ または ⌘] ⌘[）。後ろに描いたものほど前面
+静止 = そのitemを対称展開から外して「地」にする（展開の背後に1回だけ出る。もう一度押すと戻る）
+
+パスを編む
+　塗り⇄線 ⇧X = 塗りと線を入れ替え（イラレのX相当）
+　なめらかに = 選択パスの全アンカーをスムース点に（もう一度押すと角に戻る）
+　パスを閉じる / つなぐ ⌘J = 開いた線を閉じる / 選んだ2本の開いた線を最短の端点でつなぐ（近ければ1点に融合）
+　アンカーで切る ⌘⇧K = 編集モードで選んだアンカーでパスを分割（閉パスはそこで開く）
+
+重なりを演算する（対象は閉じた図形。手描き線・開いた線・画像は対象外）
+　合体=最前面のスタイルを継承 / 型抜き=最背面から前面を引く / 交差=共通部分だけ残す
+　面に分割 = 重なりを最小の面に切り分ける（切りたい線を一緒に選ぶと線でも割れる）。不要な面は選んで削除
+
+輪郭をずらす = パスのオフセット（角はマイター）。閉じた図形は内外へ平行に / 開いた線は輪郭化して面になる（細らせすぎると消える）
+
+スタイル: 選択中は選択だけに効く。次に描くものの既定を変えるには選択を外してから（Esc）
+塗り=紙 は白抜き（前面が背後を隠す）。透明PNGでは本物の穴になる / SVGでは白いオブジェクト（イラレのパスファインダで抜ける）
+全削除 = ⌘⇧⌫ または 全消去ボタン（⌘Zで戻せる）
+書き出し: SVG/PNG/コードをコピー は選択スワッチが対象。コピー=展開のSVGコード（Illustrator/Figmaに⌘V）
+吸着: 移動中のオブジェクトは 他の形・パッドの端/中心・回転中心 に整列（点線ガイド／ドラッグ中にshiftで一時オフ）
+　描画中は 既存オブジェクトの アンカー→中点→輪郭（エッジ）の順に吸く。それが無ければガイド（格子の交点 / 同心円×15°）
+　編集モードでは 対称要素にも吸く: アンカー→回転中心→中点→鏡映軸→輪郭（他のコピー・対応点も対象）
+回転中心を置く = パッドをタップで中心を移動（再タップで戻す）・画像/SVG読込は⌘V貼り付けも可（写真は暗い線を拾う）
+ギャラリーへ投稿 = 選択スワッチを公開ギャラリーへ（初回はGitHubトークン）</div>
+
+<script src="js/geom.js"></script>
+<script src="js/groups.js"></script>
+<script src="js/store.js"></script>
+<script src="js/render.js"></script>
+<script src="js/export.js"></script>
+<script src="js/svgimport.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
