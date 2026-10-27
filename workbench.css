@@ -1,0 +1,315 @@
+/* symmetry専用作業面。共通規格の色・余白・操作契約を継承し、スマホを正式対象にする。 */
+:root {
+  --color-accent-subtle:#e6eef1; --color-focus-ring:var(--color-accent);
+  --color-text-muted:#626762; --font-sans:"Noto Sans JP",-apple-system,BlinkMacSystemFont,sans-serif;
+  --font-mono:ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --wb-stage:#fff; --wb-header:56px; --wb-nav:48px; --wb-context:52px; --wb-dock:64px;
+  --wb-line:1px solid var(--color-border-secondary); --wb-dialog-width:460px;
+  --wb-side-w:340px; --wb-control:44px; --wb-icon:20px; --wb-view-height:100dvh;
+}
+html:has(body.workbench),body.workbench {width:100%;height:100%;overflow:hidden;}
+/* PC: 左に道具の列・上に設定の行・中央に作品と状態文・右に前に選んだ群と群の一覧（MOCK-layout-261026） */
+body.workbench {height:var(--wb-view-height);display:grid;grid-template-columns:56px minmax(0,1fr) 288px;grid-template-rows:var(--wb-header) var(--wb-nav) minmax(0,1fr) auto;background:var(--wb-stage);}
+.workbench [hidden] {display:none!important;}
+.workbench button,.workbench label.btn,.workbench a.btn {min-width:var(--wb-control);height:var(--wb-control);font-size:var(--font-size-md);font-weight:500;}
+.workbench button svg {width:var(--wb-icon);height:var(--wb-icon);flex:none;}
+.workbench button:focus-visible {outline:2px solid var(--color-focus-ring);outline-offset:-2px;}
+.wb-header {display:flex;align-items:center;gap:var(--space-2);padding:0 var(--space-4);background:var(--color-background);border-bottom:var(--wb-line);}
+.wb-wordmark {font-size:var(--font-size-lg);font-weight:600;letter-spacing:-.03em;margin-right:auto;}
+.wb-icon-button {padding:0!important;color:var(--color-text-secondary);}
+.wb-menu,.wb-export {display:inline-flex;align-items:center;gap:var(--space-2);padding:0 var(--space-3)!important;white-space:nowrap;border-color:transparent;background:transparent;}
+.wb-export .key {position:static;align-self:center;line-height:1;font-family:var(--font-mono);font-size:var(--font-size-xs);color:var(--color-text-muted);margin-left:var(--space-1);}
+.wb-short {display:none;}
+.wb-header .wb-clear {display:inline-flex;align-items:center;gap:var(--space-1);padding:0 var(--space-2)!important;white-space:nowrap;border-color:transparent;background:transparent;color:var(--color-negative);}
+.wb-header .wb-clear svg {width:20px;height:20px;}
+/* 間隔（セルの辺）と格子の線の出し入れ。壁紙・帯のときだけ（workbench.js が hidden を切り替える）。PC は #wbOptions・スマホは #wbTileRow */
+#wbTile {display:flex;align-items:center;gap:var(--space-2);flex:none;}
+#wbTile .wb-gap {display:inline-flex;align-items:center;gap:var(--space-1);font-size:var(--font-size-sm);color:var(--color-text-secondary);white-space:nowrap;}
+#wbTile .wb-gap svg {width:20px;height:20px;flex:none;}
+#wbGap,#wbSize {width:80px;min-width:0;margin:0;accent-color:var(--color-accent);}
+.wb-gapnum {min-width:3ch;font-family:var(--font-mono);font-size:var(--font-size-sm);color:var(--color-text-primary);text-align:right;}
+#wbGrid[aria-pressed=true],#wbRows[aria-pressed=true] {color:var(--color-accent);background:var(--color-accent-subtle);}
+#wbTileRow {display:none;}
+#wbRows {white-space:nowrap;}
+.wb-header #barRedo {display:inline-flex;}
+.wb-header .barAct {margin:0;}
+#wbOptions {display:flex;align-items:center;gap:var(--space-3);padding:0 var(--space-4);background:var(--color-surface-secondary);border-bottom:var(--wb-line);min-width:0;}
+#wbOptions button {height:32px;min-width:0;padding:0 var(--space-2);gap:var(--space-1);font-size:var(--font-size-sm);font-weight:400;}
+#wbOptions>.wb-spacer,.wb-spacer {flex:1;min-width:0;}
+.wb-tabhint {font-family:var(--font-mono);font-size:var(--font-size-xs);color:var(--color-text-muted);}
+.wb-toolname {font-size:var(--font-size-sm);color:var(--color-text-secondary);white-space:nowrap;min-width:3em;}
+#wbOptions #wbQuick,#wbOptions #wbForm,#wbOptions #wbAnchor {gap:var(--space-1);}
+#wbOptions #penbar {padding:0;border:0;}
+#wbOptions #penbar .grpHd,#wbOptions #penbar .plbl {display:none;}
+#wbOptions #penbar .prow {display:block;margin:0;}
+#wbOptions input[type=color] {width:28px;height:28px;border:0;background:transparent;padding:2px;}
+/* 表示の切替: 展開｜一覧｜描いた物だけ（3つ並びのセグメント） */
+#wbView {display:inline-flex;border:var(--wb-line);border-radius:var(--radius-sm);overflow:hidden;background:var(--color-background);flex:none;}
+#wbView button,#wbOptions #wbView button {height:32px;border:0;border-radius:0;padding:0 var(--space-3);font-size:var(--font-size-sm);font-weight:400;white-space:nowrap;background:transparent;color:var(--color-text-primary);box-shadow:none;}
+#wbView button+button,#wbView .wb-seg-item {border-left:var(--wb-line);}
+#wbView .wb-seg-item {display:contents;}
+#wbView .wb-seg-item button {border-left:var(--wb-line);}
+#wbView button[aria-pressed=true],#wbOptions #wbView button[aria-pressed=true] {background:var(--color-accent-subtle);color:var(--color-accent);font-weight:600;}
+#wbView button.on {box-shadow:none;}
+#wbZoom svg {display:none;}
+.wb-zbtn {padding:0!important;width:32px;}
+.wb-zbtn span {display:none;}
+.workbench #modebar {background:transparent;gap:var(--space-1);padding:0;}
+.workbench #modebar button {font-size:var(--font-size-md);height:var(--wb-control);padding:0 var(--space-3);border-radius:0;border-bottom:2px solid transparent;}
+.workbench #modebar button.on {box-shadow:none;color:var(--color-accent);background:transparent;border-bottom-color:var(--color-accent);}
+#wbRule {font-family:var(--font-mono);font-weight:600;color:var(--color-accent);}
+#wbRule svg {display:none;}
+#wbArt {min-width:0;min-height:0;display:flex;align-items:stretch;overflow:hidden;position:relative;}
+.workbench #layout {display:contents;padding:0;}
+.workbench #padCol {position:static;width:auto;max-height:none;min-width:0;padding:0;overflow:hidden;flex:1;display:none;}
+.workbench .padStick {position:static;display:flex;width:100%;height:100%;align-items:center;justify-content:center;padding:var(--space-4);background:transparent;}
+.workbench #pad {width:var(--wb-pad,280px);height:var(--wb-pad,280px);max-width:100%;border:var(--wb-line);border-radius:var(--radius-xs);}
+body.workbench #edit {display:none;flex-direction:row;position:static;min-width:0;height:100%;width:100%;padding:var(--space-4);align-items:center;justify-content:center;background:transparent;border:0;}
+.workbench #editCv {max-width:100%;flex:none;border:var(--wb-line);border-radius:var(--radius-xs);}
+.workbench.mode-live #padCol {display:block;}
+.workbench.mode-edit #edit {display:flex;}
+.workbench #live {display:none;}
+@media(min-width:1000px) {
+  .workbench.mode-live #live {display:flex;flex:0 0 30%;border-left:var(--wb-line);flex-direction:column;padding:var(--space-6);justify-content:center;overflow:hidden;}
+  .workbench #live>.grpTitle {font-size:var(--font-size-md);color:var(--color-text-secondary);}
+  .workbench #livePanel {display:block;}
+  .workbench #livePanel canvas {width:100%!important;height:auto;}
+  .workbench #livePanel .lb {font-size:var(--font-size-base);margin-top:var(--space-3);}
+}
+.workbench #results {display:none;margin:0;width:100%;height:100%;overflow-y:auto;overscroll-behavior:contain;padding:var(--space-5);}
+.workbench.mode-grid #results {display:block;}
+.workbench #results .row {display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--space-5);margin-bottom:var(--space-8);}
+.workbench .sw canvas {width:100%;height:auto;}
+.workbench .sw .lb {font-size:var(--font-size-md);padding:var(--space-2) 0;}
+.workbench .grpTitle {font-size:var(--font-size-md);color:var(--color-text-secondary);}
+#wbStatus {display:grid;grid-template-columns:minmax(0,1fr) auto auto;min-height:var(--space-6);align-items:center;padding:0 var(--space-4);column-gap:var(--space-2);font-size:var(--font-size-sm);color:var(--color-text-secondary);}
+#wbTarget {grid-area:1/1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#wbPin {grid-area:1/2;}
+#wbSaved {grid-area:1/3;color:var(--color-text-muted);}
+#wbStatus {min-height:32px;padding:0 var(--wb-status-pad,var(--space-4));}
+#wbStatus #wbPin {height:28px;min-width:0;padding:0 var(--space-2);gap:var(--space-1);font-size:var(--font-size-sm);font-weight:400;color:var(--color-text-secondary);border-color:transparent;background:transparent;}
+#wbStatus #wbPin svg {width:16px;height:16px;}
+/* 通知は作品面の外＝この状態行に1行で出す（#wbTarget と同じ場所に重なる）。長い文は省略して title に全文 */
+#wbMessage {grid-area:1/1;z-index:1;align-self:stretch;display:flex;align-items:center;gap:var(--space-2);min-width:0;background:var(--wb-stage);color:var(--color-text-primary);font-size:var(--font-size-sm);}
+#wbMessage span {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#wbMessage button {flex:none;color:var(--color-text-secondary);border-color:transparent;background:transparent;}
+#wbContext {background:var(--color-background);border-top:var(--wb-line);display:flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);min-width:0;}
+#wbContext>div {display:flex;align-items:center;gap:var(--space-1);}
+#wbContext input[type=color] {width:var(--wb-control);height:var(--wb-control);border:0;background:transparent;padding:var(--space-2);}
+#wbContext #penbar {padding:0;border:0;}
+#wbContext #penbar .grpHd,#wbContext #penbar .plbl {display:none;}
+#wbContext #penbar .prow {display:block;}
+.workbench dialog {padding:0;border:var(--wb-line);border-radius:var(--radius-sm);width:min(calc(100% - 32px),var(--wb-dialog-width));max-height:calc(var(--wb-view-height) - 40px);background:var(--color-background);color:var(--color-text-primary);box-shadow:var(--shadow-floating);}
+/* 色・線幅は作品面の右に出し、結果を見ながら調整する（作品面は左へ寄る） */
+#wbSheet.side {position:fixed;inset:calc(var(--wb-header) + var(--wb-nav) + var(--space-2)) var(--space-4) auto auto;margin:0;width:var(--wb-side-w);max-height:calc(var(--wb-view-height) - var(--wb-header) - var(--wb-nav) - var(--space-6));z-index:45;}
+body.wb-side #wbArt {margin-right:calc(var(--wb-side-w) + var(--space-6));}
+.wb-numrow {grid-column:1/-1;display:flex;align-items:center;gap:var(--space-3);margin-top:var(--space-2);font-size:var(--font-size-md);color:var(--color-text-secondary);}
+#wbSwNum {width:96px;margin:0;text-align:right;}
+.workbench dialog::backdrop {background:var(--color-overlay);}
+.wb-sheet-header {display:flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);border-bottom:var(--wb-line);}
+.wb-sheet-header h2 {font-size:var(--font-size-base);margin:0;flex:1;font-weight:600;}
+#wbSheetBody {padding:var(--space-4);overflow-y:auto;max-height:calc(var(--wb-view-height) - 120px);}
+.wb-page {display:none;}
+.wb-page.active {display:block;}
+.wb-page>.grp {display:block!important;padding:0;border:0;}
+.wb-page>.grp>summary {display:none;}
+.wb-page .grpHd,.wb-page .plbl,.wb-page .lbl {font-size:var(--font-size-md);color:var(--color-text-secondary);}
+.wb-page .prow {grid-template-columns:1fr;margin:0 0 var(--space-3);}
+.wb-page .plbl {padding:0;margin-bottom:var(--space-1);}
+.wb-page .sub {width:100%;}
+.wb-page summary {min-height:var(--wb-control);font-size:var(--font-size-md);}
+.wb-page .subBody {padding:var(--space-2) 0;}
+.wb-page .hint {font-size:var(--font-size-md);line-height:1.6;}
+.wb-page .num,.wb-page input[type=text],.wb-page select {height:var(--wb-control);font-size:var(--font-size-base);}
+.wb-page #grpIO>.prow:first-of-type {display:none;}
+.wb-page #grpIO .exportRow {display:block;}
+.wb-page .btn-danger {color:var(--color-negative);}
+.wb-page #grpStyle>.prow:first-of-type .pbody {display:grid;grid-template-columns:repeat(4,1fr);}
+.wb-page #grpStyle>.prow:first-of-type .pbody>.lbl:nth-of-type(2) {grid-column:1;}
+.wb-page #wChips,.wb-page #aChips,.wb-page #rChips {display:flex;gap:var(--space-1);}
+.wb-page #wChips>button {flex:1;min-width:44px;}
+.wb-page #grpDraw>.prow:first-of-type>.pbody {display:grid;grid-template-columns:repeat(3,1fr);}
+.wb-tabs {display:flex;gap:var(--space-2);margin-bottom:var(--space-3);}
+.wb-tabs button[aria-pressed=true] {background:var(--color-accent-subtle);color:var(--color-accent);}
+.wb-actions {display:flex;gap:var(--space-2);flex-wrap:wrap;}
+.wb-note {color:var(--color-text-secondary);font-size:var(--font-size-md);line-height:1.6;}
+.wb-rule-grid {display:grid;grid-template-columns:repeat(4,1fr);gap:var(--space-2);}
+.wb-rule-grid button[aria-pressed=true] {background:var(--color-accent-subtle);color:var(--color-accent);}
+.wb-pins {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);}
+.wb-pin {min-width:0;border-bottom:var(--wb-line);padding-bottom:var(--space-3);}
+.wb-pin img {width:100%;height:auto;background:var(--wb-stage);border:var(--wb-line);}
+.wb-pin p {margin:var(--space-2) 0;font-size:var(--font-size-md);}
+.wb-pin button {font-size:var(--font-size-md);}
+#wbSheet[data-page=pins] {--wb-dialog-width:720px;}
+.wb-file-actions {display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2);}
+@media(max-width:699px) {
+  .workbench dialog {position:fixed;inset:auto 0 0;margin:0;width:100%;max-width:none;max-height:calc(var(--wb-view-height) - 56px);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding-bottom:env(safe-area-inset-bottom);}
+  #wbSheetBody {max-height:calc(var(--wb-view-height) - 136px);}
+  .workbench #results {padding:var(--space-4);}
+  .workbench #results .row {grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);}
+  .workbench #live {display:none!important;}
+  .workbench #padCol {flex:1;}
+  .wb-page .key {display:none;}
+}
+/* 横向き（高さ500px未満）は下の「狭い画面」の規則で扱う（作品面を左・操作を右に縦並び） */
+/* 旧3カラム規則をこの作業面では使わない。 */
+.workbench.mode-live #results,.workbench.mode-edit #results {display:none;}
+.workbench.mode-live #live {order:1;}
+.workbench .wb-page #etSnapWrap {display:block;}
+.workbench .wb-page .wb-edit-detail.etOpt {display:none;}
+.wb-ink {display:inline-block;width:16px;height:16px;border:var(--wb-line);border-radius:var(--radius-xs);background:var(--wb-ink);}
+#wbForm button[aria-pressed=true] {color:var(--color-accent);background:var(--color-accent-subtle);}
+.workbench .wb-page [hidden] {display:none!important;}
+#wbFeedback {margin:var(--space-3) var(--space-4) 0;padding:var(--space-3);background:var(--color-accent-subtle);font-size:var(--font-size-md);line-height:var(--line-height-body);}
+#wbZoom {font-family:var(--font-mono);font-size:var(--font-size-sm);color:var(--color-text-secondary);}
+.workbench #pad,.workbench #editCv {transform-origin:center;}
+/* 展開の右に並べる、前に選んだ群の小さい展開（2番目・3番目）。幅は JS が --wb-recent に入れる（大きい展開の1/4以下） */
+#wbRecent {display:grid;grid-template-columns:repeat(2,100px);justify-content:start;gap:var(--space-2);min-height:calc(var(--space-6) + 2 * 132px);}   /* 4枚＝2列×2段（右の列 256px に収まる） */
+#wbRecent>.wb-side-h {grid-column:1/-1;margin:0;}
+#wbRecent.empty {visibility:hidden;}   /* 空でも場所を取っておく＝群を替えても右の列が動かない */
+#wbRecent>button {display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-1);width:100px;min-width:0;height:auto;padding:0;border:0;background:transparent;}
+#wbRecent>button:hover canvas {border-color:var(--color-border-primary);}
+#wbRecent canvas {display:block;width:100px;height:100px;border:var(--wb-line);border-radius:var(--radius-xs);background:var(--art-paper);}
+#wbRecent span {font-family:var(--font-mono);font-size:var(--font-size-sm);font-weight:400;color:var(--color-text-secondary);text-align:left;}
+/* Shift タップで開く群の一覧（浮遊要素なので影可）。表示は展開のまま・決めると閉じる */
+#wbGroupPop {position:absolute;z-index:50;right:var(--space-4);top:calc(var(--wb-header) + var(--wb-nav) + var(--space-2));width:min(340px,30vw);max-height:calc(var(--wb-view-height) - var(--wb-header) - var(--wb-nav) - var(--wb-dock) - var(--space-8));overflow-y:auto;overscroll-behavior:contain;padding:var(--space-4);background:var(--color-background);border:var(--wb-line);border-radius:var(--radius-md);box-shadow:var(--shadow-floating);}
+.wb-pop-title {font-size:var(--font-size-sm);color:var(--color-text-secondary);margin:var(--space-3) 0 var(--space-2);}
+.wb-pop-title:first-child {margin-top:0;}
+.wb-pop-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:var(--space-2);}
+#wbGroupPop button {display:flex;flex-direction:column;align-items:stretch;gap:var(--space-1);min-width:0;height:auto;padding:var(--space-1);border:0;background:transparent;border-radius:var(--radius-sm);}
+#wbGroupPop button:hover {background:var(--color-surface-secondary);}
+#wbGroupPop button:focus-visible {outline:2px solid var(--color-focus-ring);outline-offset:-2px;}
+#wbGroupPop button[aria-pressed=true] {background:var(--color-accent-subtle);color:var(--color-accent);}
+#wbGroupPop canvas {display:block;width:100%;height:auto;border:var(--wb-line);border-radius:var(--radius-xs);background:var(--art-paper);}
+#wbGroupPop span {font-family:var(--font-mono);font-size:var(--font-size-sm);font-weight:400;text-align:left;white-space:normal;overflow-wrap:anywhere;line-height:1.3;}   /* 群名は切らない（折り返す） */
+@media(max-width:899px) {   /* 狭い画面は作品面の下に低く出す（覆う面積を抑える） */
+  #wbGroupPop {left:var(--space-2);right:var(--space-2);width:auto;top:auto;bottom:calc(var(--wb-dock) + var(--wb-context) + var(--space-2));max-height:30vh;}
+}
+
+/* =========================================================
+   PC の配置（左に道具の列・右に群）。狭い画面では隠れ、下の「狭い画面」ブロックが効く
+   ========================================================= */
+.wb-header {grid-area:1/1/2/4;}
+#wbOptions {grid-area:2/1/3/4;}
+#wbTools {grid-area:3/1/5/2;}
+#wbArt {grid-area:3/2/4/3;}
+#wbStatus {grid-area:4/2/5/3;}
+#wbSide {grid-area:3/3/5/4;}
+body.mode-grid #wbArt {grid-area:3/1/4/4;}
+body.mode-grid #wbStatus {grid-area:4/1/5/4;}
+body.mode-grid #wbTools,body.mode-grid #wbSide {display:none;}
+#wbRules,#wbSelRow,#wbContext,#wbFlick,#wbDock>[data-flick],body.workbench #wbTools #wbDock>[data-flick] {display:none;}
+body:not(.wb-narrow) #wbDock {display:contents;}
+.wb-header {gap:var(--space-2);}
+.wb-header .wb-icon-button {width:36px;min-width:36px;height:36px;}
+#wbTools {display:flex;flex-direction:column;align-items:center;gap:var(--space-1);padding:var(--space-2) 0;background:var(--color-background);border-right:var(--wb-line);overflow-y:auto;overflow-x:hidden;min-height:0;}
+body.workbench #wbTools button {position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;min-width:40px;height:40px;padding:0;margin:0;border:0;border-radius:var(--radius-sm);background:transparent;color:var(--color-text-primary);box-shadow:none;}
+body.workbench #wbTools button:hover {background:var(--color-surface-secondary);}
+body.workbench #wbTools button.on,body.workbench #wbTools button[aria-pressed=true] {background:var(--color-accent-subtle);color:var(--color-accent);}
+#wbTools button svg {width:24px;height:24px;}
+#wbTools .key {position:absolute;right:3px;bottom:1px;font-family:var(--font-mono);font-size:9px;line-height:1;color:var(--color-text-muted);}
+#wbTools button.on .key {color:var(--color-accent);}
+.wb-tl {position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+.wb-tsep {display:block;width:24px;height:1px;margin:var(--space-1) 0;background:var(--color-border-secondary);flex:none;}
+#wbTools #barClear {margin-top:var(--space-2);}
+#wbSide {display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-4);background:var(--color-background);border-left:var(--wb-line);overflow-y:auto;min-height:0;}
+.wb-side-h {margin:0 0 var(--space-2);font-size:var(--font-size-xs);color:var(--color-text-muted);}
+.wb-side-note {margin:var(--space-3) 0 0;font-size:var(--font-size-xs);color:var(--color-text-muted);}
+#wbGroups .wb-side-h:not(:first-child) {margin-top:var(--space-3);}
+.wb-group-grid {display:flex;flex-wrap:wrap;gap:var(--space-1);}
+#wbGroups button,.wb-group-grid button {flex:1 0 auto;min-width:36px;height:28px;padding:0 var(--space-2);font-family:var(--font-mono);font-size:var(--font-size-xs);font-weight:400;border:var(--wb-line);background:var(--color-background);color:var(--color-text-primary);border-radius:var(--radius-xs);}
+#wbGroups button:hover {background:var(--color-surface-secondary);}
+#wbGroups button[aria-pressed=true] {background:var(--color-accent-subtle);color:var(--color-accent);border-color:var(--color-accent);font-weight:600;}
+
+/* =========================================================
+   狭い画面（幅900px未満・スマホ横向き）＝固定入口4つ＋フリック＋群の帯＋1段の行
+   body.wb-narrow は workbench.js が付ける。PC（900px以上）には一切効かない。
+   ========================================================= */
+body:not(.wb-narrow) #wbFlick {display:none!important;}
+body.workbench.wb-narrow {
+  --wb-fixed:calc(var(--wb-header) + 48px + 56px + 32px + 48px + 8px + var(--wb-dock) + env(safe-area-inset-bottom));
+  --wb-art-h:min(100vw, calc(var(--wb-view-height) - var(--wb-fixed)));
+  grid-template-columns:minmax(0,1fr);
+  /* 上の行・表示の切替・群の帯・作品（正方形）・状態文・（空き1か所）・ペン等の行・1段の行・下の4つ */
+  grid-template-rows:var(--wb-header) 48px 56px var(--wb-art-h) auto minmax(0,1fr) auto 48px calc(var(--wb-dock) + env(safe-area-inset-bottom));
+}
+body.wb-narrow.wb-ctx {--wb-fixed:calc(var(--wb-header) + 48px + 56px + 32px + 48px + 60px + var(--wb-dock) + env(safe-area-inset-bottom));}
+body.wb-narrow.wb-aux {--wb-fixed:calc(var(--wb-header) + 48px + 56px + 32px + 48px + 8px + 44px + var(--wb-dock) + env(safe-area-inset-bottom));}   /* 補助線の行（44px）の分 */
+body.wb-narrow.wb-tile {--wb-fixed:calc(var(--wb-header) + 48px + 56px + 32px + 48px + 8px + 80px + var(--wb-dock) + env(safe-area-inset-bottom));}   /* 間隔・大きさの行（80px）の分だけ作品を縮める */
+body.wb-narrow.wb-ctx.wb-tile {--wb-fixed:calc(var(--wb-header) + 48px + 56px + 32px + 48px + 60px + 80px + var(--wb-dock) + env(safe-area-inset-bottom));}
+body.wb-narrow #wbTools,body.wb-narrow #wbSide {display:none;}
+body.wb-narrow .wb-header {grid-area:1/1;padding:0 var(--space-3);gap:var(--space-1);}
+body.wb-narrow .wb-wordmark {display:none;}
+body.wb-narrow .wb-menu {margin-left:auto;}
+body.wb-narrow .wb-long,body.wb-narrow .wb-export .key {display:none;}
+body.wb-narrow .wb-short {display:inline;}
+body.wb-narrow #wbOptions {grid-area:2/1;padding:0 var(--space-4);background:var(--color-background);border-bottom:0;}
+body.wb-narrow #wbOptions #wbView button {height:36px;}
+body.wb-narrow #wbZoom {display:inline-flex;gap:var(--space-1);padding:0;font-size:var(--font-size-md);color:var(--color-text-primary);}
+body.wb-narrow #wbZoom svg {display:block;width:24px;height:24px;}
+body.wb-narrow #wbRules {display:flex;grid-area:3/1;box-sizing:border-box;height:56px;align-items:center;gap:var(--space-1);padding:0 var(--space-4);scroll-padding:0 var(--space-4);overflow-x:auto;overflow-y:hidden;background:var(--color-background);scrollbar-width:none;overscroll-behavior-x:contain;}
+body.wb-narrow #wbRules::-webkit-scrollbar {display:none;}
+body.wb-narrow #wbArt {grid-area:4/1;}
+body.wb-narrow #wbStatus {grid-area:5/1;}
+body.wb-narrow #wbContext {display:flex;grid-area:7/1;}
+body.wb-narrow #wbSelRow {display:flex;grid-area:8/1;}
+body.wb-narrow #wbTileRow {display:flex;grid-area:6/1;align-items:center;box-sizing:border-box;height:80px;padding:0 var(--space-4);background:var(--color-background);}
+body.wb-narrow #wbTileRow #wbTile {flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--space-3);row-gap:0;align-items:center;}
+body.wb-narrow #wbTileRow #wbGrid {grid-area:1/2/3/3;}
+body.wb-narrow #wbTileRow #wbTile.has-rows #wbGrid {grid-area:1/2;}
+body.wb-narrow #wbTileRow #wbRows {grid-area:2/2;height:36px;padding:0 var(--space-2);gap:var(--space-1);font-size:var(--font-size-md);font-weight:400;white-space:nowrap;}
+body.wb-narrow.wb-aux #wbTileRow {height:44px;}
+body.wb-narrow.wb-aux #wbTileRow #wbTile {display:flex;}
+body.wb-narrow.wb-aux #wbTileRow #wbGrid {height:36px;}
+#wbTile .wb-gaplbl {display:inline-block;min-width:3em;}
+#wbTile .wb-size {padding-left:calc(20px + var(--space-1));}   /* 間隔（アイコン付き）と大きさのスライダーの左端を揃える */
+body.wb-narrow #wbTileRow .wb-gap {flex:1;min-width:0;font-size:var(--font-size-md);}
+body.wb-narrow #wbTileRow #wbGap,body.wb-narrow #wbTileRow #wbSize {flex:1;width:auto;}
+body.wb-narrow #wbTileRow #wbGrid {height:36px;padding:0 var(--space-2);gap:var(--space-1);font-size:var(--font-size-md);font-weight:400;}
+body.wb-narrow #wbDock {display:flex;grid-area:9/1;justify-content:flex-end;}
+#wbRules button {flex:none;min-width:40px;height:40px;padding:0 var(--space-3);font-family:var(--font-mono);font-size:var(--font-size-md);font-weight:400;border:var(--wb-line);border-radius:var(--radius-xs);background:var(--color-background);}
+#wbRules button[aria-pressed=true] {background:var(--color-accent-subtle);color:var(--color-accent);border-color:var(--color-accent);font-weight:600;}
+.wb-rules-head {flex:none;margin:0 var(--space-1) 0 var(--space-2);font-size:var(--font-size-xs);color:var(--color-text-muted);white-space:nowrap;}
+.wb-rules-head:first-child {margin-left:0;}
+.wb-rules-more {flex:none;padding:0 var(--space-2);color:var(--color-text-muted);}
+body.wb-narrow #wbStatus {padding:0 var(--space-4);}
+body.wb-narrow #wbSelRow {align-items:center;gap:var(--space-1);padding:0 var(--space-3);background:var(--color-background);border-top:var(--wb-line);}
+#wbSelRow button {flex:1;min-width:0;height:40px;padding:0 var(--space-2);gap:var(--space-2);font-size:var(--font-size-md);font-weight:400;border-color:transparent;background:transparent;}
+#wbSelRow button svg {width:20px;height:20px;}
+#wbSelRow button.btn-danger {color:var(--color-negative);}
+#wbSelRow button.on {color:var(--color-accent);background:var(--color-accent-subtle);}
+body.wb-narrow #wbContext {background:var(--color-background);border-top:var(--wb-line);}
+body.wb-narrow #wbDock {background:var(--color-background);align-items:flex-start;padding:var(--space-1) var(--space-3) env(safe-area-inset-bottom);border-top:var(--wb-line);gap:var(--space-2);}
+body.wb-narrow #wbDock>[data-flick] {display:flex;flex:0 0 76px;width:76px;min-width:0;height:calc(var(--wb-dock) - var(--space-2));flex-direction:column;gap:2px;padding:var(--space-1);border:0;border-radius:var(--radius-sm);background:transparent;font-size:var(--font-size-sm);font-weight:400;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+body.wb-narrow #wbDock>[data-flick] svg {width:24px;height:24px;}
+body.wb-narrow #wbDock>[data-flick].on {color:var(--color-accent);background:var(--color-accent-subtle);}
+body.wb-narrow #wbDock>[data-flick][aria-disabled=true] {opacity:.45;}
+/* フリックの候補: 後ろを白く薄くして候補（十字5マス・アイコン＋文字）だけ浮かせる */
+#wbFlick {position:fixed;inset:0;z-index:58;display:flex;align-items:flex-end;justify-content:center;padding-bottom:calc(var(--wb-dock) + env(safe-area-inset-bottom) + var(--space-3));background:rgba(255,255,255,.55);pointer-events:none;}
+.wb-flick-pad {pointer-events:auto;padding:var(--space-2);background:var(--color-background);border:var(--wb-line);border-radius:var(--radius-md);box-shadow:var(--shadow-floating);}
+.wb-flick-pad p {margin:0 0 var(--space-2);font-size:var(--font-size-xs);color:var(--color-text-secondary);text-align:center;}
+.wb-flick-grid {display:grid;grid-template-columns:repeat(3,minmax(56px,auto));grid-template-rows:repeat(3,56px);gap:var(--space-1);}
+#wbFlick button {flex-direction:column;gap:2px;width:auto;min-width:56px;height:56px;padding:0 var(--space-1);font-size:11px;font-weight:400;white-space:nowrap;border:var(--wb-line);border-radius:var(--radius-xs);background:var(--color-background);touch-action:none;}
+#wbFlick button svg {width:24px;height:24px;}
+#wbFlick button[data-dir=up] {grid-area:1/2;}
+#wbFlick button[data-dir=left] {grid-area:2/1;}
+#wbFlick button[data-dir=center] {grid-area:2/2;}
+#wbFlick button[data-dir=right] {grid-area:2/3;}
+#wbFlick button[data-dir=down] {grid-area:3/2;}
+#wbFlick button.on {background:var(--color-accent-subtle);color:var(--color-accent);border-color:var(--color-accent);}
+/* 横向き: 作品面を左（短辺いっぱい）、ヘッダー・表示の切替・群の帯・状態文・1段の行・操作列は右の列に縦に並べる */
+@media(max-height:500px) and (min-width:600px) {
+  :root {--wb-header:48px;--wb-dock:52px;--wb-right:min(400px,52vw);}
+  body.workbench.wb-narrow {grid-template-columns:minmax(0,1fr) var(--wb-right);grid-template-rows:var(--wb-header) 48px 56px auto 48px minmax(0,1fr) auto var(--wb-dock);}
+  body.wb-narrow #wbArt {grid-area:1/1/-1/2;}
+  body.wb-narrow .wb-header {grid-area:1/2;}
+  body.wb-narrow #wbOptions {grid-area:2/2;}
+  body.wb-narrow #wbRules {grid-area:3/2;}
+  body.wb-narrow #wbStatus {grid-area:4/2;}
+  body.wb-narrow #wbSelRow {grid-area:5/2;}
+  body.wb-narrow #wbTileRow {grid-area:6/2;}
+  body.wb-narrow #wbContext {grid-area:7/2;}
+  body.wb-narrow #wbDock {grid-area:8/2;}
+  body.wb-narrow #wbFlick {padding-left:calc(100vw - var(--wb-right));}
+  .workbench .padStick,body.workbench #edit {padding:var(--space-2);}
+}
